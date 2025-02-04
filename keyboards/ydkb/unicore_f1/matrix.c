@@ -62,6 +62,7 @@ void matrix_scan_kb(void)
 }
 
 bool is_ver5020 = 0;
+bool is_sc_leds_mcu = 0;
 
 void matrix_init(void)
 {
@@ -71,8 +72,19 @@ void matrix_init(void)
     //check ver595 or ver5020
     palSetPadMode(GPIOB, 9, PAL_MODE_INPUT_PULLUP);
     palSetPad(GPIOB, 9);
+    //check if single color led indicators. PB8
+    palSetPadMode(GPIOB, 8, PAL_MODE_INPUT_PULLUP);
+    palSetPad(GPIOB, 8);
     wait_ms(10);
     if (palReadPad(GPIOB, 9) == 0) is_ver5020 = 1;
+    if (palReadPad(GPIOB, 8) == 0) is_sc_leds_mcu = 1;
+
+    // caps_led, PB14
+    palSetPadMode(GPIOB, 14, PAL_MODE_OUTPUT_PUSHPULL);
+    palClearPad(GPIOB, 14);
+    // scroll_led, PA8
+    palSetPadMode(GPIOA, 8, PAL_MODE_OUTPUT_PUSHPULL);
+    palClearPad(GPIOA, 8);
 
     init_cols();
     rgblight_set();
@@ -87,6 +99,7 @@ uint8_t matrix_scan(void)
 {
     matrix_scan_quantum(); // use this to run hook_keyboard_loop()
 
+#if 0 //ndef MAGNET
     if (matrix_idle) {
         if (get_key() == 0) return 1;
         else {
@@ -94,6 +107,7 @@ uint8_t matrix_scan(void)
             first_key_scan = true;
         }
     }
+#endif
     //if (!first_key_scan) {
         //scan matrix every 1ms
         uint16_t time_check = timer_read();
