@@ -51,10 +51,22 @@ led_config_t g_led_config = { {
     2, 2, 2, 2, 2, 2, 2, 2, 2
 } };
 
+extern LED_TYPE indicator_color[3];
+extern uint8_t indicator_color_config[];
 __attribute__ ((weak))
 void rgb_matrix_indicators_user(void) {
+    if (indicator_color_config[1] & 0b10) { //Swithes Only
+        for (uint8_t i=0; i<61; i++) {
+            rgb_matrix_set_color(i, 0, 0, 0); 
+        }
+    }
+    if (indicator_color_config[1] & 0b1) { //Underglow Only
+        for (uint8_t i=61; i<(61+18); i++) {
+            rgb_matrix_set_color(i, 0, 0, 0); 
+        }
+    }
     if (host_keyboard_led_state().caps_lock) {
-        rgb_matrix_set_color(28, 128, 0, 128);
+        rgb_matrix_set_color(28, indicator_color[0].r, indicator_color[0].g, indicator_color[0].b);
     }
     if (rgb_matrix_config.enable == 0) {
         if (host_keyboard_led_state().caps_lock == 0) {

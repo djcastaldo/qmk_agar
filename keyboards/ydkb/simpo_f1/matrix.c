@@ -154,8 +154,16 @@ static uint8_t get_key(uint8_t col)
  */
 static void unselect_rows(void)
 {
+#if 0
     palSetGroupMode(GPIOA,  0b01111000, 0, PAL_MODE_INPUT);
     palSetPadMode(GPIOB,  2, PAL_MODE_INPUT);
+#else 
+    palSetPad(GPIOA, 3);
+    palSetPad(GPIOA, 4);
+    palSetPad(GPIOA, 5);
+    palSetPad(GPIOA, 6);
+    palSetPad(GPIOB, 2);
+#endif
 }
 
 static void select_row(uint8_t row)

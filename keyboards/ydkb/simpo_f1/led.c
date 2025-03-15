@@ -24,53 +24,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "quantum.h"
 
 extern rgblight_config_t rgblight_config;
-static LED_TYPE RGBLIGHT_COLOR_OFF   = { .r = 0, .g = 0, .b = 0 };
+static LED_TYPE RGBLIGHT_COLOR_OFF = { .r = 0, .g = 0, .b = 0 };
 uint8_t indicator_state = 0;
 
-LED_TYPE rgbled[INDICATOR_NUM+RGBLED_NUM];
+uint8_t indicator_color_config[3];
+LED_TYPE indicator_color[3];
 
 void rgblight_call_driver(LED_TYPE *start_led, uint8_t num_leds) {
 #ifdef RGB_MATRIX_ENABLE
     return;
 #endif
-    // keep indicator color
-#ifdef INDICATOR_0_FUNCT
-    if (indicator_state & (1<<0)) {
-        #ifdef INDICATOR_0_VAL
-        sethsv(rgblight_config.hue, rgblight_config.sat, INDICATOR_0_VAL, &rgbled[0]);
-        #else
-        rgbled[0] = INDICATOR_0_COLOR;
-        #endif
-        #ifdef INDICATOR_0_INSTRIP
-        start_led[INDICATOR_0_INSTRIP] = rgbled[0];
-        #endif
-    } else {
-        rgbled[0] = RGBLIGHT_COLOR_OFF;
-    }
-#endif
-#ifdef INDICATOR_1_FUNCT
-    if (indicator_state & (1<<1)) {
-        rgbled[1] = INDICATOR_1_COLOR;
-        #ifdef INDICATOR_1_INSTRIP
-        start_led[INDICATOR_1_INSTRIP] = INDICATOR_1_COLOR;
-        #endif
-    } else {
-        rgbled[1] = RGBLIGHT_COLOR_OFF;
-    }
-#endif
-#ifdef INDICATOR_2_FUNCT
-    if (indicator_state & (1<<2)) {
-        rgbled[2] = INDICATOR_2_COLOR;
-        #ifdef INDICATOR_2_INSTRIP
-        start_led[INDICATOR_2_INSTRIP] = INDICATOR_2_COLOR;
-        #endif
-    } else {
-        rgbled[2] = RGBLIGHT_COLOR_OFF;
-    }
-#endif
 
-    memcpy(&rgbled[INDICATOR_NUM], start_led, RGBLED_NUM*3);
-    ws2812_setleds(rgbled, INDICATOR_NUM+RGBLED_NUM);
 }
 
 void led_set_user(uint8_t usb_led)
@@ -81,24 +45,6 @@ void led_set_user(uint8_t usb_led)
     }
     return;
 #endif
-    indicator_state = 0;
-#ifdef INDICATOR_0_FUNCT
-    if (usb_led & INDICATOR_0_FUNCT) {
-        indicator_state |= (1<<0);
-    }
-#endif
-#ifdef INDICATOR_1_FUNCT
-    if (usb_led & INDICATOR_1_FUNCT) {
-        indicator_state |= (1<<1);
-    }
-#endif
-#ifdef INDICATOR_2_FUNCT
-    if (usb_led & INDICATOR_2_FUNCT) {
-        indicator_state |= (1<<2);
-    }
-#endif
-    if (rgblight_config.mode == 1) rgblight_mode_noeeprom(rgblight_config.mode);
-    rgblight_set(); //set rgb even when rgblight.enable=0
 }
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
@@ -109,8 +55,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
             if (record->event.pressed) {
                 clear_keyboard();
                 volatile uint32_t *uf2bl_backup_reg = (uint32_t*)0x20004000;
-            	*uf2bl_backup_reg = 0x9d5bfc2bUL;
-            	NVIC_SystemReset();
+                *uf2bl_backup_reg = 0x9d5bfc2bUL;
+                NVIC_SystemReset();
             }
             return false;
         // 0x5f8f for Alt+Esc=f4 and RShift+Esc=~
@@ -170,18 +116,48 @@ void restart_usb_driver(USBDriver *usbp) {
     NVIC_SystemReset();
 }
 
+void user_config_update(void)
+{
+    static const uint8_t indicator_hue_preset[8] = {0, 21, 42, 85, 127, 170, 212, 255};
+    #ifdef INDICATOR_VAL
+    static uint8_t val = INDICATOR_VAL;
+    #else 
+    static uint8_t val = 255;
+    #endif
+
+    static uint16_t last_value = 0xffff;
+    uint16_t new_value = eeprom_read_word((void *)(VIA_EEPROM_LAYOUT_OPTIONS_ADDR));
+    if (new_value != last_value) {
+        last_value = new_value;
+        for (uint8_t i=0; i<3; i++) {
+            indicator_color_config[i] = (new_value & 0b111);
+            uint8_t hue = indicator_hue_preset[ indicator_color_config[i] ];
+            new_value >>= 3;
+            if (hue == 255) indicator_color[i] = (LED_TYPE){val/2, val/2, val/2};
+            else            indicator_color[i] = hsv_to_rgb((HSV){hue, 255, val});
+            xprintf("\n indicator %d R: %d, G: %d, B:%d", i, indicator_color[i].r, indicator_color[i].g, indicator_color[i].b);
+        }
+    }
+}
+
 //rgblight welcome
 extern rgblight_config_t rgblight_config;
 extern bool is_rgblight_initialized;
 extern LED_TYPE led[];
-void hook_keyboard_loop(void) {
+void hook_keyboard_loop(void)
+{
+    static uint16_t one_second_timer = 0;
+    if (one_second_timer != timer_read() && timer_elapsed(one_second_timer) >= 1000) {
+        one_second_timer = timer_read();
+        user_config_update();
+    }
 #ifndef WELCOME_LIGHT
     return;
 #endif
 }
 
 // Snap Tap / SOCD
-static const SOCD_KEY[2][2] = {
+static const uint8_t SOCD_KEY[2][2] = {
     { KC_W, KC_S },
     { KC_A, KC_D }
 };
