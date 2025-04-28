@@ -1,7 +1,2 @@
-# Enable Vial support as in the original keymap
-VIA_ENABLE = yes
-VIAL_ENABLE = yes
-VIAL_INSECURE = yes
-QMK_SETTINGS = yes
-TAP_DANCE_ENABLE = yes
-KEY_OVERRIDE_ENABLE = yes
+# Basic features needed for the keyboard
+KEY_OVERRIDE_ENABLE = yes    # Required for key overrides

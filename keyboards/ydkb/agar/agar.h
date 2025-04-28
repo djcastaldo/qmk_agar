@@ -44,3 +44,5 @@
 }
 
 // clang-format on
+
+#define LAYOUT_60_tsangan_hhkb LAYOUT

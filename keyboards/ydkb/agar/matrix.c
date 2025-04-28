@@ -19,6 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "hal.h"
 #include "quantum.h"  // Added for matrix_row_t definition
 #include "config_common.h"
+#include "stm32f1xx.h"  // Added for RCC definitions
+
 
 /*
  * scan matrix
@@ -32,7 +34,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "debounce_pk.h"
 #include "wait.h"
 #include "switch_board.h"
-#include "rgblight.h"
 
 #undef DOUBLE_CLICK_FIX_DELAY
 #define DOUBLE_CLICK_FIX_DELAY 15
@@ -69,6 +70,9 @@ void matrix_init(void)
     debug_config.enable = 1;
     debug_config.matrix = 0;
 
+    // Enable GPIOB clock
+    RCC->APB2ENR |= RCC_APB2ENR_IOPBEN;
+
     //check ver595 or ver5020
     palSetPadMode(GPIOB, 9, PAL_MODE_INPUT_PULLUP);
     palSetPad(GPIOB, 9);
@@ -87,7 +91,6 @@ void matrix_init(void)
     palClearPad(GPIOA, 8);
 
     init_cols();
-    rgblight_set();
 }
 
 static bool process_key_press = 0;
