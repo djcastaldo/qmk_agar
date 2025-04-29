@@ -1,4 +1,5 @@
 USER_NAME := chrisgve
 
-BOOTMAGIC_ENABLE = no
-
+KEYBOARD_SHARED_EP = no     # we forego the apple globe key
+AGAR_ENABLE = yes
+WORD_CAPS_ENABLE = no		# not compatible with this version of the firmware

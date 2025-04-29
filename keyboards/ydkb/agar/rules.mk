@@ -30,4 +30,4 @@ OPT_DEFS += -DCORTEX_ENABLE_WFI_IDLE=TRUE
 OPT_DEFS += -DCORTEX_VTOR_INIT=0x4000
 
 # Include the YDKB directory for shared header files
-VPATH += keyboards/ydkb
+# VPATH += keyboards/ydkb
