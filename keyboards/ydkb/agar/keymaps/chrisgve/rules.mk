@@ -4,7 +4,7 @@ BOOTMAGIC_ENABLE = no
 KEYBOARD_SHARED_EP = no     # we forego the apple globe key
 AGAR_ENABLE = yes
 CAPS_WORD_ENABLE = no		# not compatible with this version of the firmware
-LTO_ENABLE = no
+LTO_ENABLE = yes
 KEY_OVERRIDE_ENABLE = yes
 COMBO_ENABLE = no
 
