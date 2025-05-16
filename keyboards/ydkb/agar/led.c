@@ -25,12 +25,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 extern bool is_ver5020;
 extern bool is_sc_leds_mcu;
 
+// Placeholder
+
+__attribute__((weak)) bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    return true;
+}
+
 // Just turn on the LED
-void single_color_indicator_set(uint8_t index, bool on)
-{
+void single_color_indicator_set(uint8_t index, bool on) {
     if (index == 0) {
-        if (on) palSetPad(GPIOB, 14);
-        else palClearPad(GPIOB, 14);
+        if (on)
+            palSetPad(GPIOB, 14);
+        else
+            palClearPad(GPIOB, 14);
     }
 }
 
@@ -40,20 +47,19 @@ void led_init_kb(void) {
     palSetPad(GPIOB, 14);
 }
 
-void led_set_user(uint8_t usb_led)
-{
+void led_set_user(uint8_t usb_led) {
     // Keep LED on regardless of state
     single_color_indicator_set(0, true);
 }
 
-bool process_record_user(uint16_t keycode, keyrecord_t *record) {
-    return true;
+bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
+    return process_record_user(keycode, record);
 }
 
 void enter_bootloader(void) {
     clear_keyboard();
-    volatile uint32_t *uf2bl_backup_reg = (uint32_t*)0x20004000;
-    *uf2bl_backup_reg = 0x9d5bfc2bUL;
+    volatile uint32_t *uf2bl_backup_reg = (uint32_t *)0x20004000;
+    *uf2bl_backup_reg                   = 0x9d5bfc2bUL;
     NVIC_SystemReset();
 }
 
@@ -62,7 +68,7 @@ bool command_extra(uint8_t code) {
     clear_keyboard();
     switch (code) {
         case KC_B:
-            wait_us(500*1000);
+            wait_us(500 * 1000);
             if (pressed_mods & MOD_BIT(KC_LCTRL)) {
                 enter_bootloader();
             }
