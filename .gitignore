@@ -95,3 +95,5 @@ compile_commands.json
 .clangd/
 .cache/
 *.cmd
+docs
+ydkb_kbdfans_agar_via.json
