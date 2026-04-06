@@ -18,38 +18,40 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "hal.h"
 #include "ch.h"
 #include "led.h"
+#include "color.h"
+#include "rgblight.h"
+
+#include "stdint.h"
 #include "quantum.h"
 #include "timer.h"
 #include "wait.h"
+#include "process_record_userspace.h"
 
+#ifndef LOGIC_INDICATOR_NUM
+#define LOGIC_INDICATOR_NUM PHY_INDICATOR_NUM
+#endif
+
+extern rgblight_config_t rgblight_config;
 extern bool is_ver5020;
 extern bool is_sc_leds_mcu;
-
-// Placeholder
+LED_TYPE rgbled[PHY_INDICATOR_NUM + RGBLED_NUM];
 
 __attribute__((weak)) bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     return true;
 }
 
-// Just turn on the LED
-void single_color_indicator_set(uint8_t index, bool on) {
-    if (index == 0) {
-        if (on)
-            palSetPad(GPIOB, 14);
-        else
-            palClearPad(GPIOB, 14);
-    }
-}
+void rgblight_call_driver(LED_TYPE *start_led, uint8_t num_leds) {
+    // Clear indicator LEDs first
+    memset(rgbled, 0, sizeof(rgbled));
 
-void led_init_kb(void) {
-    // Set LED on at startup - pure test
-    palSetPadMode(GPIOB, 14, PAL_MODE_OUTPUT_PUSHPULL);
-    palSetPad(GPIOB, 14);
-}
+    uint8_t count = num_leds > RGBLED_NUM ? RGBLED_NUM : num_leds;
+    memcpy(&rgbled[PHY_INDICATOR_NUM], start_led, count * sizeof(LED_TYPE));
 
-void led_set_user(uint8_t usb_led) {
-    // Keep LED on regardless of state
-    single_color_indicator_set(0, true);
+#ifdef RGB_EXTRA_PROCESS_ENABLE
+    rgb_extra_process(rgbled);
+#endif
+
+    ws2812_setleds(rgbled, PHY_INDICATOR_NUM + RGBLED_NUM);
 }
 
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
@@ -84,7 +86,4 @@ void restart_usb_driver(USBDriver *usbp) {
     NVIC_SystemReset();
 }
 
-void hook_keyboard_loop(void) {
-    // Keep LED on
-    single_color_indicator_set(0, true);
-}
+__attribute__((weak)) void hook_keyboard_loop(void) {}

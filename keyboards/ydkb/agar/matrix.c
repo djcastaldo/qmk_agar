@@ -33,6 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "debounce_pk.h"
 #include "wait.h"
 #include "switch_board.h"
+#include "rgblight.h"
 
 #undef DOUBLE_CLICK_FIX_DELAY
 #define DOUBLE_CLICK_FIX_DELAY 15
@@ -86,6 +87,7 @@ void matrix_init(void) {
     palClearPad(GPIOA, 8);
 
     init_cols();
+    rgblight_set();
 }
 
 static bool process_key_press = 0;
@@ -94,45 +96,47 @@ bool        should_process_keypress(void) {
 }
 
 uint8_t matrix_scan(void) {
-    matrix_scan_quantum(); // use this to run hook_keyboard_loop()
+    matrix_scan_quantum();
 
-    // scan matrix every 1ms
-    uint16_t time_check = timer_read();
-    if (matrix_scan_timestamp == time_check) return 1;
-    matrix_scan_timestamp = time_check;
+    // 1ms Throttle - Essential for STM32 speed
+    static uint16_t last_scan = 0;
+    if (timer_elapsed(last_scan) < 1) return 1;
+    last_scan = timer_read();
 
     select_key(0);
     uint8_t matrix_keys_idle = 0;
+
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
-            uint8_t *debounce         = &matrix_debouncing[row][col];
+            uint8_t *debounce = &matrix_debouncing[row][col];
             uint8_t *double_click_fix = &matrix_double_click_fix[row][col];
 
-            uint8_t key = get_key();
-            *debounce   = (*debounce >> 1) | key;
-            // select next key
-            select_key(1);
-            if (1) {
-                matrix_row_t *p_row    = &matrix[row];
-                matrix_row_t  col_mask = ((matrix_row_t)1 << col);
-                if (*double_click_fix > 0 && (*p_row & col_mask) == 0) {
-                    (*double_click_fix)--;
-                } else {
-                    if (*debounce > now_debounce_dn_mask) { // debounce KEY DOWN
-                        *p_row |= col_mask;
-                        *double_click_fix = DOUBLE_CLICK_FIX_DELAY;
-                    } else if (*debounce < DEBOUNCE_UP_MASK) { // debounce KEY UP
-                        *p_row &= ~col_mask;
-                        matrix_keys_idle++;
-                    }
+            // Use the original bit-shifting direction
+            uint8_t key_state = get_key();
+            *debounce = (*debounce >> 1) | key_state;
+
+            matrix_row_t col_mask = ((matrix_row_t)1 << col);
+
+            if (*double_click_fix > 0 && (matrix[row] & col_mask) == 0) {
+                (*double_click_fix)--;
+            } else {
+                // Use the masks from debounce_pk.h
+                if (*debounce > now_debounce_dn_mask) {
+                    matrix[row] |= col_mask;
+                    *double_click_fix = DOUBLE_CLICK_FIX_DELAY;
+                } else if (*debounce < DEBOUNCE_UP_MASK) {
+                    matrix[row] &= ~col_mask;
                 }
             }
+
+            if (!(matrix[row] & col_mask)) matrix_keys_idle++;
+
+            select_key(1);
         }
     }
 
-    // to avoid all the keys being down in some cases like KEY is connected to GND.
+    // A simpler failsafe: only process if we don't have a total matrix flood
     process_key_press = (matrix_keys_idle > 0);
-
     return 1;
 }
 
@@ -174,17 +178,23 @@ void select_all_keys(void) {
 static void select_key(uint8_t mode) {
     select_key_ready();
     if (mode == 0) {
+        // Reset sequence
         KEY_SDI_OFF();
         for (uint8_t i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
             CLOCK_PULSE();
+            wait_us(2);
         }
         KEY_SDI_ON();
+        wait_us(2);
         CLOCK_PULSE();
+        // Leave it ready for the first get_key()
     } else {
+        // Shift to next key
         KEY_SDI_OFF();
+        wait_us(2);
         CLOCK_PULSE();
     }
-    // KEYS_LATCH();
+    wait_us(10); // Settling time before reading pin
     get_key_ready();
 }
 

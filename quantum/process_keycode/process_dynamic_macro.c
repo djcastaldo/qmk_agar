@@ -17,6 +17,7 @@
 
 /* Author: Wojciech Siewierski < wojciech dot siewierski at onet dot pl > */
 #include "process_dynamic_macro.h"
+#include "features/layer_lock.h"
 
 // default feedback method
 void dynamic_macro_led_blink(void) {
@@ -75,8 +76,17 @@ void dynamic_macro_record_start(keyrecord_t **macro_pointer, keyrecord_t *macro_
  * @param macro_end[in]    The element after the last macro buffer element.
  * @param direction[in]    Either +1 or -1, which way to iterate the buffer.
  */
+bool is_macro_playing;
 void dynamic_macro_play(keyrecord_t *macro_buffer, keyrecord_t *macro_end, int8_t direction) {
     dprintf("dynamic macro: slot %d playback\n", DYNAMIC_MACRO_CURRENT_SLOT());
+    //added
+    //~=~=~=~=~=~=~=~=~=~=~=~=~
+    bool layers_locked[6];
+    for (int i = 1; i < 6; i++) {
+        layers_locked[i] = is_layer_locked(i);
+    }
+    is_macro_playing = true;
+    //~=~=~=~=~=~=~=~=~=~=~=~=~
 
     layer_state_t saved_layer_state = layer_state;
 
@@ -96,6 +106,15 @@ void dynamic_macro_play(keyrecord_t *macro_buffer, keyrecord_t *macro_end, int8_
     layer_state_set(saved_layer_state);
 
     dynamic_macro_play_user(direction);
+    //added
+    //~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
+    for (int i = 1; i < 6; i++) {
+        if (layers_locked[i]) {
+            layer_lock_on(i);
+        }
+    }
+    is_macro_playing = false;
+    //~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
 }
 
 /**
@@ -147,6 +166,68 @@ void dynamic_macro_record_end(keyrecord_t *macro_buffer, keyrecord_t *macro_poin
     *macro_end = macro_pointer;
 }
 
+
+/* Both macros use the same buffer but read/write on different
+ * ends of it.
+ *
+ * Macro1 is written left-to-right starting from the beginning of
+ * the buffer.
+ *
+ * Macro2 is written right-to-left starting from the end of the
+ * buffer.
+ *
+ * &macro_buffer   macro_end
+ *  v                   v
+ * +------------------------------------------------------------+
+ * |>>>>>> MACRO1 >>>>>>      <<<<<<<<<<<<< MACRO2 <<<<<<<<<<<<<|
+ * +------------------------------------------------------------+
+ *                           ^                                 ^
+ *                         r_macro_end                  r_macro_buffer
+ *
+ * During the recording when one macro encounters the end of the
+ * other macro, the recording is stopped. Apart from this, there
+ * are no arbitrary limits for the macros' length in relation to
+ * each other: for example one can either have two medium sized
+ * macros or one long macro and one short macro. Or even one empty
+ * and one using the whole buffer.
+ */
+static keyrecord_t macro_buffer[DYNAMIC_MACRO_SIZE];
+
+/* Pointer to the first buffer element after the first macro.
+ * Initially points to the very beginning of the buffer since the
+ * macro is empty. */
+static keyrecord_t *macro_end = macro_buffer;
+
+/* The other end of the macro buffer. Serves as the beginning of
+ * the second macro. */
+static keyrecord_t *const r_macro_buffer = macro_buffer + DYNAMIC_MACRO_SIZE - 1;
+
+/* Like macro_end but for the second macro. */
+static keyrecord_t *r_macro_end = r_macro_buffer;
+
+/* A persistent pointer to the current macro position (iterator)
+ * used during the recording. */
+static keyrecord_t *macro_pointer = NULL;
+
+/* 0   - no macro is being recorded right now
+ * 1,2 - either macro 1 or 2 is being recorded */
+static uint8_t macro_id = 0;
+
+/**
+ * If a dynamic macro is currently being recorded, stop recording.
+ */
+void dynamic_macro_stop_recording(void) {
+    switch (macro_id) {
+        case 1:
+            dynamic_macro_record_end(macro_buffer, macro_pointer, +1, &macro_end);
+            break;
+        case 2:
+            dynamic_macro_record_end(r_macro_buffer, macro_pointer, -1, &r_macro_end);
+            break;
+    }
+    macro_id = 0;
+}
+
 /* Handle the key events related to the dynamic macros. Should be
  * called from process_record_user() like this:
  *
@@ -158,51 +239,6 @@ void dynamic_macro_record_end(keyrecord_t *macro_buffer, keyrecord_t *macro_poin
  *   }
  */
 bool process_dynamic_macro(uint16_t keycode, keyrecord_t *record) {
-    /* Both macros use the same buffer but read/write on different
-     * ends of it.
-     *
-     * Macro1 is written left-to-right starting from the beginning of
-     * the buffer.
-     *
-     * Macro2 is written right-to-left starting from the end of the
-     * buffer.
-     *
-     * &macro_buffer   macro_end
-     *  v                   v
-     * +------------------------------------------------------------+
-     * |>>>>>> MACRO1 >>>>>>      <<<<<<<<<<<<< MACRO2 <<<<<<<<<<<<<|
-     * +------------------------------------------------------------+
-     *                           ^                                 ^
-     *                         r_macro_end                  r_macro_buffer
-     *
-     * During the recording when one macro encounters the end of the
-     * other macro, the recording is stopped. Apart from this, there
-     * are no arbitrary limits for the macros' length in relation to
-     * each other: for example one can either have two medium sized
-     * macros or one long macro and one short macro. Or even one empty
-     * and one using the whole buffer.
-     */
-    static keyrecord_t macro_buffer[DYNAMIC_MACRO_SIZE];
-
-    /* Pointer to the first buffer element after the first macro.
-     * Initially points to the very beginning of the buffer since the
-     * macro is empty. */
-    static keyrecord_t *macro_end = macro_buffer;
-
-    /* The other end of the macro buffer. Serves as the beginning of
-     * the second macro. */
-    static keyrecord_t *const r_macro_buffer = macro_buffer + DYNAMIC_MACRO_SIZE - 1;
-
-    /* Like macro_end but for the second macro. */
-    static keyrecord_t *r_macro_end = r_macro_buffer;
-
-    /* A persistent pointer to the current macro position (iterator)
-     * used during the recording. */
-    static keyrecord_t *macro_pointer = NULL;
-
-    /* 0   - no macro is being recorded right now
-     * 1,2 - either macro 1 or 2 is being recorded */
-    static uint8_t macro_id = 0;
 
     if (macro_id == 0) {
         /* No macro recording in progress. */

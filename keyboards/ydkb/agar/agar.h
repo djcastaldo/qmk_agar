@@ -46,3 +46,9 @@
 // clang-format on
 
 #define LAYOUT_60_tsangan_hhkb LAYOUT
+
+enum kb_keycodes {
+    KC_LPAD = SAFE_RANGE,
+    KC_MCTL,
+    NEW_SAFE_RANGE,
+};
