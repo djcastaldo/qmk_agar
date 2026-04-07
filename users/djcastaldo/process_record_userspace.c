@@ -403,6 +403,12 @@ bool process_record_userspace(uint16_t keycode, keyrecord_t *record) {
     static uint32_t fkey_timer = 0;
     static uint8_t fkey_tap_count = 0;
     #endif
+    static uint32_t fnhhkb_timer = 0;
+    static uint8_t fnhhkb_tap_count = 0;
+    static bool fnhhkb_is_pressed = false;
+    static bool fnhhkb_interrupted = false;
+    static bool fnhhkb_ctrl_active = false;
+    
     static uint32_t fnsym_timer = 0;
     static uint8_t fnsym_tap_count = 0;
     static uint32_t sp_rctl_timer = 0;
@@ -582,6 +588,21 @@ bool process_record_userspace(uint16_t keycode, keyrecord_t *record) {
     // setup for RSFT_TD keycode: detect interruption by other keys
     if (rsft_pressed && record->event.pressed && keycode != RSFT_TD) {
         rsft_interrupted = true;
+    }
+    // permissive hold setup for FN_HHKB keycode
+    if (record->event.pressed) {
+        // permissive hold interrupt
+        if (fnhhkb_tap_count > 0 && keycode != FN_HHKB) {
+            fnhhkb_interrupted = true;
+        }
+
+        // Only trigger Ctrl if we are actually ON the second tap and holding it
+        if (keycode != FN_HHKB && fnhhkb_tap_count == 2 && fnhhkb_is_pressed) {
+            if (!fnhhkb_ctrl_active && (fnhhkb_interrupted || timer_elapsed32(fnhhkb_timer) >= 250)) {
+                register_code(KC_LCTL);
+                fnhhkb_ctrl_active = true;
+            }
+        }
     }
 
     switch (keycode) {
@@ -4327,6 +4348,80 @@ bool process_record_userspace(uint16_t keycode, keyrecord_t *record) {
             }
         }
         return false;
+    // alternative to tap dance for hhkb style caps layer key that includes KC_LCTL
+    case FN_HHKB:
+    if (record->event.pressed) {
+        fnhhkb_is_pressed = true;
+        fnhhkb_interrupted = false;
+        
+        // 1. Check gap BEFORE resetting timer
+        if (fnhhkb_tap_count > 0 && timer_elapsed32(fnhhkb_timer) < 250) {
+            fnhhkb_tap_count++;
+            // Kill FN_LAYR if we are moving to tap 2 or 3
+            layer_off(FN_LAYR); 
+            if (fnhhkb_tap_count == 3) {
+                // Cancel the OneShot that was armed during the release of Tap 2
+                reset_oneshot_layer();
+            }
+        } else {
+            fnhhkb_tap_count = 1;
+        }
+
+        // 2. Reset timer for current press duration
+        fnhhkb_timer = timer_read32();
+
+        // 3. PRESS ACTIONS (Momentary)
+        if (fnhhkb_tap_count == 1) {
+            layer_on(FN_LAYR); 
+        } else if (fnhhkb_tap_count == 3) {
+            layer_on(FKEY_LAYR);
+        }
+
+    } else {
+        // RELEASE ACTIONS
+        fnhhkb_is_pressed = false; // Mark physical release
+
+        if (fnhhkb_ctrl_active) {
+            unregister_code(KC_LCTL);
+            fnhhkb_ctrl_active = false;
+        }
+
+        uint16_t elapsed = timer_elapsed32(fnhhkb_timer);
+        bool is_hold = fnhhkb_interrupted || (elapsed >= 250);
+
+        switch (fnhhkb_tap_count) {
+            case 1:
+                layer_off(FN_LAYR); 
+                if (!is_hold) {
+                    // Single Tap -> FN OneShot
+                    set_oneshot_layer(FN_LAYR, ONESHOT_START);
+                    clear_oneshot_layer_state(ONESHOT_PRESSED);
+                }
+                break;
+
+            case 2:
+                if (!is_hold) {
+                    // Double Tap -> FKEY OneShot
+                    set_oneshot_layer(FKEY_LAYR, ONESHOT_START);
+                    clear_oneshot_layer_state(ONESHOT_PRESSED);
+                }
+                break;
+
+            case 3:
+                layer_off(FKEY_LAYR);
+                if (!is_hold) {
+                    // Triple Tap -> Caps
+                    tap_code(KC_CAPS);
+                }
+                break;
+        }
+
+        // Reset count if it was a hold or we finished the sequence
+        if (is_hold || fnhhkb_tap_count >= 3) {
+            fnhhkb_tap_count = 0;
+        }
+    }
+    return false;
     // i use left control and right control to switch desktops on left/right monitors, so this lets me use both left/right control with one hand
     // this logic should only be used on a single key
     case SP_RCTL:
@@ -6346,29 +6441,96 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
 #elif defined(KEYBOARD_IS_AGAR)
 void rgb_matrix_layer_helper(LED_TYPE *rgbled, uint8_t layer) {
     LED_TYPE color;
-
-    switch (layer) {
-        case MAC_BASE:
-            color = (LED_TYPE){10, 10, 10};    // very dim white
-            break;
-        case FKEY_LAYR:
-            color = (LED_TYPE){255, 255, 255}; // white
-            break;
-        case FN_LAYR:
-            color = (LED_TYPE){255, 0, 0};     // green (GRB → green)
-            break;
-        case SFT_LAYR:
-            color = (LED_TYPE){255, 255, 0};   // yellow
-            break;
-        case KCTL_LAYR:
-            color = (LED_TYPE){0, 255, 0};     // red (GRB!)
-            break;
-        case TMUX_LAYR:
-            color = (LED_TYPE){255, 0, 255};   // cyan-ish
-            break;
-        default:
-            color = (LED_TYPE){0, 0, 255};     // blue
-            break;
+    
+    if (host_keyboard_led_state().caps_lock || is_caps_word_on()) {
+        color = (LED_TYPE){0, 255, 15};
+    }
+    else { 
+        switch (layer) {
+            case MAC_BASE:
+            case WIN_BASE:
+                #ifdef CONFIG_BASE_LAYR_COLOR
+                color = (LED_TYPE){CONFIG_BASE_LAYR_COLOR};
+                #else
+                color = (LED_TYPE){10, 10, 10};    // very dim white
+                #endif
+                break;
+            #ifdef CONFIG_HAS_FKEY_LAYR
+            case FKEY_LAYR:
+                #ifdef CONFIG_FKEY_LAYR_COLOR
+                color = (LED_TYPE){CONFIG_FKEY_LAYR_COLOR};
+                #endif
+                break;
+            #endif
+            case FN_LAYR:
+                #ifdef CONFIG_FN_LAYR_COLOR
+                color = (LED_TYPE){CONFIG_FN_LAYR_COLOR};
+                #endif
+                break;
+            case SFT_LAYR:
+                #ifdef CONFIG_SHIFT_LAYR_COLOR
+                color = (LED_TYPE){CONFIG_SHIFT_LAYR_COLOR};
+                #endif
+                break;
+            #ifdef SFT_TRILAYER
+            case SFT_LAYR_NAV:
+                #ifdef CONFIG_SHIFTB_LAYR_COLOR
+                color = (LED_TYPE){CONFIG_SHIFTB_LAYR_COLOR};
+                #endif
+                break;
+            #endif
+            case KCTL_LAYR:
+                #ifdef CONFIG_KCTL_LAYR_COLOR
+                color = (LED_TYPE){CONFIG_KCTL_LAYR_COLOR};
+                #endif
+                break;
+            case TMUX_LAYR:
+                #ifdef CONFIG_TMUX_LAYR_COLOR
+                color = (LED_TYPE){CONFIG_TMUX_LAYR_COLOR};
+                #endif
+                break;
+            #ifdef TMUX_TRILAYER
+            case TMUX_LAYR_NAV:
+                #ifdef CONFIG_TMUXB_LAYR_COLOR
+                color = (LED_TYPE){CONFIG_TMUXB_LAYR_COLOR};
+                #endif
+                break;
+            #endif
+            case VS_LAYR:
+                #ifdef CONFIG_VS_LAYR_COLOR
+                color = (LED_TYPE){CONFIG_VS_LAYR_COLOR};
+                #endif
+                break;
+            case WSYM_LAYR:
+            case MSYM_LAYR:
+                #ifdef CONFIG_SYM_LAYR_COLOR
+                color = (LED_TYPE){CONFIG_SYM_LAYR_COLOR};
+                #endif
+                break;
+            case WIDE_LAYR:
+                #ifdef CONFIG_WIDE_LAYR_COLOR
+                color = (LED_TYPE){CONFIG_WIDE_LAYR_COLOR};
+                #endif
+                break;
+            case CIRC_LAYR:
+                #ifdef CONFIG_CIRC_LAYR_COLOR
+                color = (LED_TYPE){CONFIG_CIRC_LAYR_COLOR};
+                #endif
+                break;
+            case EMO_LAYR:
+                #ifdef CONFIG_EMO_LAYR_COLOR
+                color = (LED_TYPE){CONFIG_EMO_LAYR_COLOR};
+                #endif
+                break;
+            case LOCK_LAYR:
+                color = (LED_TYPE){0,0,0};
+                break;
+            default:
+                #ifdef CONFIG_DEFUALT_LAYR_COLOR
+                color = (LED_TYPE){CONFIG_DEFUALT_LAYR_COLOR};
+                #endif
+                break;
+        }
     }
 
     //for (uint8_t i = 0; i < RGBLED_NUM; i++) {
@@ -6379,7 +6541,6 @@ void rgb_matrix_layer_helper(LED_TYPE *rgbled, uint8_t layer) {
 void rgb_extra_process(LED_TYPE *rgbled) {
     uint8_t layer = get_highest_layer(layer_state);
 
-    // existing underglow behavior
     rgb_matrix_layer_helper(rgbled, layer);
 
 }
@@ -7076,6 +7237,10 @@ static tap dyn_tap_state = {
     .state = 0
 };
 static tap capsfk_tap_state = {
+    .is_press_action = true,
+    .state = 0
+};
+static tap hhkb_tap_state = {
     .is_press_action = true,
     .state = 0
 };
@@ -8213,8 +8378,81 @@ void capsfk_each(tap_dance_state_t *state, void *user_data) {
     }
 }
 
+// hhkb_ctrl tap dance key function
+void hhkb_finished (tap_dance_state_t *state, void *user_data) {
+    hhkb_tap_state.state = cur_dance(state);
+    switch (hhkb_tap_state.state) {
+        case SINGLE_TAP:
+            #if defined(KEYBOARD_IS_WOMIER) || defined(KEYBOARD_IS_BRIDGE)
+            if (is_mac_base()) {
+                if (layer_state_is(CLCK_LAYR)) {
+                    layer_off(CLCK_LAYR);
+                } else {
+                    layer_on(CLCK_LAYR);
+                }
+            }
+            else {
+                tap_code(KC_CAPS);
+            }
+            #else
+            tap_code(KC_CAPS);
+            #endif
+            break;
+        case SINGLE_HOLD:
+            layer_on(FN_LAYR);
+            break;
+        case DOUBLE_TAP:
+            layer_off(FN_LAYR);
+            set_oneshot_layer(FN_LAYR, ONESHOT_START);
+            clear_oneshot_layer_state(ONESHOT_PRESSED);
+            break;
+        case DOUBLE_HOLD:
+            register_code(KC_LCTL);
+            break;
+        case TRIPLE_TAP:
+        #ifdef CONFIG_HAS_FKEY_LAYR
+            layer_off(FKEY_LAYR);
+            set_oneshot_layer(FKEY_LAYR, ONESHOT_START);
+            clear_oneshot_layer_state(ONESHOT_PRESSED);
+        #endif
+            break;
+        case TRIPLE_HOLD:
+        #ifdef CONFIG_HAS_FKEY_LAYR
+            layer_on(FKEY_LAYR);
+        #endif
+            break;
+    }
+}
+
+void hhkb_reset (tap_dance_state_t *state, void *user_data) {
+    //if the key was held down and now is released then switch off the layer
+    switch (hhkb_tap_state.state) {
+        case SINGLE_TAP:
+            break;
+        case SINGLE_HOLD:
+            if (!is_layer_locked(FN_LAYR)) {
+                layer_off(FN_LAYR);
+            }
+            break;
+        case DOUBLE_TAP:
+            break;
+        case DOUBLE_HOLD:
+            unregister_code(KC_LCTL);
+        case TRIPLE_TAP:
+            break;
+        case TRIPLE_HOLD:
+        #ifdef CONFIG_HAS_FKEY_LAYR
+            if (!is_layer_locked(FKEY_LAYR)) {
+                layer_off(FKEY_LAYR);
+            }
+        #endif
+            break;
+    }
+    hhkb_tap_state.state = 0;
+}
+
 // associate the tap dance keys with their funcitons
-tap_dance_action_t tap_dance_actions[19] = {
+tap_dance_action_t tap_dance_actions[20] = {
     [CAPS_LAYR] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, caps_finished, caps_reset),
     [FN_OSL] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, fn_finished, fn_reset),
     [RALT_OSL] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, ralt_finished, ralt_reset),
@@ -8233,7 +8471,8 @@ tap_dance_action_t tap_dance_actions[19] = {
     [RCTL_OSL] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, rctl_finished, rctl_reset),
     [MOUSE_ACCEL] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, macl_finished, macl_reset),
     [DYN_LAYR] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, dyn_finished, dyn_reset),
-    [CAPSFK_OSL] = ACTION_TAP_DANCE_FN_ADVANCED(capsfk_each, capsfk_finished, capsfk_reset)
+    [CAPSFK_OSL] = ACTION_TAP_DANCE_FN_ADVANCED(capsfk_each, capsfk_finished, capsfk_reset),
+    [HHKB_CTRL] = ACTION_TAP_DANCE_FN_ADVANCED(NULL, hhkb_finished, hhkb_reset)
 };
 
 // accent tap dances should give a little bit longer to see the leds
@@ -8244,6 +8483,7 @@ uint16_t get_tapping_term(uint16_t keycode, keyrecord_t *record) {
             return TAPPING_TERM - 100;
         case LT(TMUX_LAYR,KC_TAB):
         case TD(CAPSFK_OSL):
+        case TD(HHKB_CTRL):
         case TD(LGUI_OSL):
         case TD(RCMD_OSL):
         case TD(RALT_OSL):
@@ -8666,8 +8906,11 @@ void leader_start_user(void) {
 
 // fade the rgb animation when layer is changed so that the layer keys are more prominent
 layer_state_t layer_state_set_user(layer_state_t state) {
-    #if defined(RGBLIGHT_ENABLE)
-    rgblight_set();
+    #ifdef SFT_TRILAYER
+    state = update_tri_layer_state(state, SFT_LOWER, SFT_UPPER, SFT_ADJUST);
+    #endif
+    #ifdef TMUX_TRILAYER
+    state = update_tri_layer_state(state, TMUX_LOWER, TMUX_UPPER, TMUX_ADJUST);
     #endif
     uint8_t layer = get_highest_layer(state);
 

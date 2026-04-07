@@ -8,6 +8,7 @@ enum layers {
     FKEY_LAYR,
     FN_LAYR,
     SFT_LAYR,
+    SFT_LAYR_NAV,
     KCTL_LAYR,
     TMUX_LAYR,
     TMUX_LAYR_NAV,
@@ -19,3 +20,12 @@ enum layers {
     EMO_LAYR,
     LOCK_LAYR
 };
+
+#define SFT_TRILAYER
+#define SFT_LOWER FKEY_LAYR
+#define SFT_UPPER SFT_LAYR
+#define SFT_ADJUST SFT_LAYR_NAV
+#define TMUX_TRILAYER
+#define TMUX_LOWER FKEY_LAYR
+#define TMUX_UPPER TMUX_LAYR
+#define TMUX_ADJUST TMUX_LAYR_NAV
