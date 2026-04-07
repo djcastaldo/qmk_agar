@@ -28,8 +28,10 @@
 #endif
 #define DBG_LEADER(...) uprintf("[LEADER] " __VA_ARGS__)
 
-__attribute__((weak)) void leader_start(void) {}
-
+__attribute__((weak)) void leader_start_user(void) {}
+__attribute__((weak)) void leader_start(void) {
+    leader_start_user();
+}
 __attribute__((weak)) void leader_end(void) {}
 
 void qk_leader_end(void);

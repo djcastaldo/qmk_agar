@@ -149,6 +149,7 @@ enum userspace_keycodes {
     WM_SIRCAT,
     VSEMOLR,
     DYN_LT,
+    TMUX_LT,
     JIGGLE,
     FJLIGHT,
     HROWLIGHT,

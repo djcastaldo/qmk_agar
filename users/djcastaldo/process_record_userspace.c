@@ -1,4 +1,4 @@
-// process_record_userspace.c
+
 // @davex 07/30/2025
 // this file is the majority of the shared user code for qmk keyboards
 
@@ -323,6 +323,11 @@ static uint16_t dyn_timer = 0;
 static bool dyn_is_hold = false;
 static bool dyn_active = false;
 static bool dyn_interrupted = false;
+// and this is an alternative to the tmux LT
+static uint16_t tmux_timer = 0;
+static bool tmux_is_hold = false;
+static bool tmux_active = false;
+static bool tmux_interrupted = false;
 // state tracking for RSFT_TD, a keycode replaced for the RSFT tap dance
 static uint16_t rsft_timer = 0;
 static uint8_t rsft_tap_count = 0;
@@ -581,6 +586,18 @@ bool process_record_userspace(uint16_t keycode, keyrecord_t *record) {
             } else {
                 layer_on(VS_LAYR);
             }
+            // block original key
+            return false;
+        }
+    }
+    // permissive hold for TMUX_LT
+    if (tmux_active && record->event.pressed && keycode != TMUX_LT) {
+        tmux_interrupted = true;
+
+        // trigger hold immediately if not already active
+        if (!tmux_is_hold) {
+            tmux_is_hold = true;
+            layer_on(TMUX_LAYR);
             // block original key
             return false;
         }
@@ -4391,9 +4408,12 @@ bool process_record_userspace(uint16_t keycode, keyrecord_t *record) {
 
         switch (fnhhkb_tap_count) {
             case 1:
-                layer_off(FN_LAYR); 
-                if (!is_hold) {
+                if (is_hold) {
+                    if (!is_layer_locked(FN_LAYR))
+                        layer_off(FN_LAYR); 
+                } else {
                     // Single Tap -> FN OneShot
+                    layer_off(FN_LAYR); 
                     set_oneshot_layer(FN_LAYR, ONESHOT_START);
                     clear_oneshot_layer_state(ONESHOT_PRESSED);
                 }
@@ -4408,9 +4428,12 @@ bool process_record_userspace(uint16_t keycode, keyrecord_t *record) {
                 break;
 
             case 3:
-                layer_off(FKEY_LAYR);
-                if (!is_hold) {
+                if (is_hold) {
+                    if (!is_layer_locked(FKEY_LAYR))
+                        layer_off(FKEY_LAYR); 
+                } else {
                     // Triple Tap -> Caps
+                    layer_off(FKEY_LAYR);
                     tap_code(KC_CAPS);
                 }
                 break;
@@ -4453,7 +4476,7 @@ bool process_record_userspace(uint16_t keycode, keyrecord_t *record) {
             }
         }
         return false;
-    // this is an alternate way to do the DYN_LAYR tap dance used on windows on linux
+    // this is an alternate way to do the DYN_LAYR tap dance for multiple os 
     case DYN_LT:
         if (record->event.pressed) {
             dyn_timer = timer_read();
@@ -4468,7 +4491,9 @@ bool process_record_userspace(uint16_t keycode, keyrecord_t *record) {
                 tap_code(get_dyn_ltkey());
             } else {
                 // HOLD RELEASE → turn off layer
-                if (user_config.is_linux_base) {
+                if (is_mac_base()) {
+                    if (!is_layer_locked(EMO_LAYR)) layer_off(EMO_LAYR);
+                } else if (user_config.is_linux_base) {
                     if (!is_layer_locked(CIRC_LAYR)) layer_off(CIRC_LAYR);
                 } else {
                     if (!is_layer_locked(VS_LAYR)) layer_off(VS_LAYR);
@@ -4476,6 +4501,27 @@ bool process_record_userspace(uint16_t keycode, keyrecord_t *record) {
             }
 
             dyn_is_hold = false;
+        }
+        return false;
+    // this is an alternate way to do LT of TMUX_LAYR 
+    case TMUX_LT:
+        if (record->event.pressed) {
+            tmux_timer = timer_read();
+            tmux_is_hold = false;
+            tmux_active = true;
+            tmux_interrupted = false;
+        } else {
+            tmux_active = false;
+
+            if (!tmux_is_hold && !tmux_interrupted && timer_elapsed(tmux_timer) < get_tapping_term(keycode, record)) {
+                // TAP
+                tap_code(KC_TAB);
+            } else if (!is_layer_locked(TMUX_LAYR)) {
+                // HOLD RELEASE → turn off layer
+                layer_off(TMUX_LAYR);
+            }
+
+            tmux_is_hold = false;
         }
         return false;
     // this is replacement for the RSFT tap dance that works better over RDP connections
@@ -6445,6 +6491,61 @@ void rgb_matrix_layer_helper(LED_TYPE *rgbled, uint8_t layer) {
     if (host_keyboard_led_state().caps_lock || is_caps_word_on()) {
         color = (LED_TYPE){0, 255, 15};
     }
+    else if (is_in_leader_sequence) {
+        if (!leader_timer || timer_elapsed(leader_timer) > 500) {
+            is_leader_led_on = !is_leader_led_on;
+            leader_timer = timer_read();
+        }
+        if (is_leader_led_on) {
+        #ifdef CONFIG_LEADER_COLORA
+            color = (LED_TYPE){CONFIG_LEADER_COLORA};
+        #endif
+        }
+        else {
+        #ifdef CONFIG_LEADER_COLORB
+            color = (LED_TYPE){CONFIG_LEADER_COLORB};
+        #endif
+        }
+    }
+    // if a leader sequence error occured, blink all leds red
+    else if (is_leader_error) {
+        if (!leader_error_timer || timer_elapsed(leader_error_timer) > 250) {
+            is_leader_error_led_on = !is_leader_error_led_on;
+            leader_error_timer = timer_read();
+        }
+        if (is_leader_error_led_on) {
+            color = (LED_TYPE){0,255,0};
+        }
+    }
+    else if (macro_recording) {
+        // flash the indicator if macro is recording
+        if (timer_elapsed(macro_timer) > 250) {
+            is_macro_led_on = !is_macro_led_on;;
+            macro_timer = timer_read();
+        }
+        if (is_macro_led_on) {
+            color = (LED_TYPE){0,255,0};
+        }
+        else {
+            color = (LED_TYPE){0,0,0};
+        }
+    }
+    else if (os_changed) {
+        if (!os_change_timer) {
+            os_change_timer = timer_read();
+        }
+        color = (LED_TYPE){255,255,255};
+        if (timer_elapsed(os_change_timer) > 300) {
+            color = (LED_TYPE){0,0,0};
+        }
+        if (timer_elapsed(os_change_timer) > 600) {
+            color = (LED_TYPE){255,255,255};
+        }
+        if (timer_elapsed(os_change_timer) > 1800) {
+            os_changed = false;
+            os_change_timer = 0;
+        }
+    }
     else { 
         switch (layer) {
             case MAC_BASE:
@@ -6531,6 +6632,19 @@ void rgb_matrix_layer_helper(LED_TYPE *rgbled, uint8_t layer) {
                 #endif
                 break;
         }
+        if (is_layer_locked(layer)) {
+            if (!layer_lock_timer || timer_elapsed(layer_lock_timer) > 1000) {
+                is_layer_lock_led_on = !is_layer_lock_led_on;
+                layer_lock_timer = timer_read();
+            }
+            if (is_layer_lock_led_on) {
+                color = (LED_TYPE){255,255,255};
+            }
+            else if ((timer_elapsed(layer_lock_timer) > 200 && timer_elapsed(layer_lock_timer) < 400) ||
+                     (timer_elapsed(layer_lock_timer) > 600)) {
+                color = (LED_TYPE){255,255,255}; // white alternate with layer color
+            }
+        }
     }
 
     //for (uint8_t i = 0; i < RGBLED_NUM; i++) {
@@ -6555,11 +6669,17 @@ void matrix_scan_user(void) {
     // check for a dynamic layer key hold
     if (dyn_active && !dyn_is_hold && timer_elapsed(dyn_timer) > get_tapping_term(DYN_LT, NULL)) {
         dyn_is_hold = true;
-        if (user_config.is_linux_base) {
+        if (is_mac_base()) {
+            layer_on(EMO_LAYR);
+        } else if (user_config.is_linux_base) {
             layer_on(CIRC_LAYR);
         } else {
             layer_on(VS_LAYR);
         }
+    }
+    if (tmux_active && !tmux_is_hold && timer_elapsed(tmux_timer) > get_tapping_term(TMUX_LT, NULL)) {
+        tmux_is_hold = true;
+        layer_on(TMUX_LAYR);
     }
     // setup for RSFT_TD keycode
     if (rsft_tap_count > 0 && !rsft_pressed &&
@@ -8482,6 +8602,7 @@ uint16_t get_tapping_term(uint16_t keycode, keyrecord_t *record) {
         case DYN_LT:
             return TAPPING_TERM - 100;
         case LT(TMUX_LAYR,KC_TAB):
+        case TMUX_LT:
         case TD(CAPSFK_OSL):
         case TD(HHKB_CTRL):
         case TD(LGUI_OSL):
