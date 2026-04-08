@@ -4391,7 +4391,9 @@ bool process_record_userspace(uint16_t keycode, keyrecord_t *record) {
         if (fnhhkb_tap_count == 1) {
             layer_on(FN_LAYR); 
         } else if (fnhhkb_tap_count == 3) {
+            #ifdef CONFIG_HAS_FKEY_LAYR
             layer_on(FKEY_LAYR);
+            #endif
         }
 
     } else {
@@ -4421,19 +4423,25 @@ bool process_record_userspace(uint16_t keycode, keyrecord_t *record) {
 
             case 2:
                 if (!is_hold) {
+                    #ifdef CONFIG_HAS_FKEY_LAYR
                     // Double Tap -> FKEY OneShot
                     set_oneshot_layer(FKEY_LAYR, ONESHOT_START);
                     clear_oneshot_layer_state(ONESHOT_PRESSED);
+                    #endif
                 }
                 break;
 
             case 3:
                 if (is_hold) {
+                    #ifdef CONFIG_HAS_FKEY_LAYR
                     if (!is_layer_locked(FKEY_LAYR))
                         layer_off(FKEY_LAYR); 
+                    #endif
                 } else {
                     // Triple Tap -> Caps
+                    #ifdef CONFIG_HAS_FKEY_LAYR
                     layer_off(FKEY_LAYR);
+                    #endif
                     tap_code(KC_CAPS);
                 }
                 break;
