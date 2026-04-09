@@ -123,6 +123,7 @@ bool process_leader(uint16_t keycode, keyrecord_t *record) {
 void qk_leader_end(void) {
     leader_end();
     leading = false;
+    leader_sequence_size = 0;
 }
 
 void leader_task(void) {
