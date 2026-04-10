@@ -63,6 +63,8 @@
 #    define RGB_MATRIX_DEFAULT_SPD 70
 /* force enable NKRO */
 #    define FORCE_NKRO
+/* oneshot no timeout */
+#    define ONESHOT_TIMEOUT 0
 
 /* increase layer count above the default of 5 */
 #    define DYNAMIC_KEYMAP_LAYER_COUNT 19
