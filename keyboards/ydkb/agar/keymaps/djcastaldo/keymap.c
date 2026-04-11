@@ -175,7 +175,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 }
 
 void leader_end_user(void) {
-    uprintf("\n\n[LEADER] >>> leader_end_user CALLED <<<\n\n");
+    dprintf("\n\n[LEADER] >>> leader_end_user CALLED <<<\n\n");
     // if either userspace or secrets return false, leader matching stops there
     if (process_leader_userspace() && process_leader_secrets()) {
         // leader sequence failed, so blink the rgb red a few times

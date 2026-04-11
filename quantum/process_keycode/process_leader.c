@@ -26,7 +26,7 @@
 #ifdef CONSOLE_ENABLE
 #  include "print.h"
 #endif
-#define DBG_LEADER(...) uprintf("[LEADER] " __VA_ARGS__)
+#define DBG_LEADER(...) dprintf("[LEADER] " __VA_ARGS__)
 
 __attribute__((weak)) void leader_start_user(void) {}
 __attribute__((weak)) void leader_start(void) {
