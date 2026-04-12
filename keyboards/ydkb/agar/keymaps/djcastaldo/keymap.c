@@ -62,15 +62,15 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         WM_QUIT, WM_SOC1, WM_SOC2, WM_SOC3, WM_SOC4, WM_SOC5, WM_SOC6, WM_SOC7, WM_SOC8, WM_SOC9, WM_SOC0,KC_VOLD,KC_VOLU,KC_NUM, WM_OVIEW,
         KC_APP, WM_QLOOK, WM_INSPECT, WM_VHIDDEN, _______,  WM_TIME, _______, KC_P7, KC_P8, KC_P9, DUAL_PLUSMIN, CURSORL, CURSORR, _______,
         MO(FKEY_LAYR), WM_APPS, WM_SIRCAT, WM_DOCS, WM_MYCM, KC_MYCM, _______,    KC_P4, KC_P5, KC_P6, DUAL_MULTDIV, _______, _______,
-        _______, MK_ACCEL2, _______, KC_MPRV, KC_MPLY, KC_MNXT, _______,  KC_P1, KC_P2, KC_P3, WM_STATB, _______, MO(FKEY_LAYR),
-        _______, _______, MK_ACCEL0, KC_P0,  KC_PDOT, _______, _______
+        _______, _______, _______, KC_MPRV, KC_MPLY, KC_MNXT, _______,  KC_P1, KC_P2, KC_P3, WM_STATB, _______, MO(FKEY_LAYR),
+        _______, _______, _______, KC_P0,  KC_PDOT, _______, _______
     ),
     [SFT_LAYR_NAV] = LAYOUT_60_tsangan_hhkb(
-        WM_QUIT, WM_SOC1, WM_SOC2, WM_SOC3, WM_SOC4, WM_SOC5, WM_SOC6, WM_SOC7, WM_SOC8, WM_SOC9, WM_SOC0,KC_VOLD,KC_VOLU,KC_NUM, WM_OVIEW,
-        KC_APP, WM_QLOOK, WM_INSPECT, WM_VHIDDEN, _______,  WM_TIME, _______,KC_P7,KC_P8,KC_MS_BTN1, KC_MS_UP, KC_MS_BTN2, CURSORR,_______,
-        _______, WM_APPS, WM_SIRCAT, WM_DOCS, WM_MYCM, KC_MYCM, _______,    KC_P4, KC_P5, KC_MS_LEFT, KC_MS_DOWN, KC_MS_RIGHT, _______,
-        _______, MK_ACCEL2, _______, KC_MPRV, KC_MPLY, KC_MNXT, _______,  KC_P1, KC_P2, MK_HOLD, KC_CALC, _______, _______,
-        _______, _______, MK_ACCEL0, KC_P0,  KC_PDOT, _______, _______
+        WM_QUIT, WM_SOC1, WM_SOC2, WM_SOC3, WM_SOC4, WM_SOC5, WM_SOC6, WM_SOC7, WM_SOC8, WM_SOC9, WM_SOC0,KC_MUTE,KC_MUTE,KC_NUM, WM_OVIEW,
+        KC_APP, WM_QLOOK, WM_INSPECT, WM_VHIDDEN, _______,  WM_TIME, _______,KC_NO,CURSORL,KC_MS_BTN1, KC_MS_UP, KC_MS_BTN2, CURSORR,_______,
+        _______, WM_APPS, WM_SIRCAT, WM_DOCS, WM_MYCM, KC_MYCM, _______,    KC_NO, KC_NO, KC_MS_LEFT, KC_MS_DOWN, KC_MS_RIGHT, _______,
+        _______, MK_ACCEL2, _______, KC_MPRV, KC_MPLY, KC_MNXT, _______,  KC_NO, KC_NO, MK_HOLD, KC_CALC, _______, _______,
+        _______, _______, MK_ACCEL0, KC_NO,  KC_NO, _______, _______
     ),
 
     [KCTL_LAYR] = LAYOUT_60_tsangan_hhkb(
