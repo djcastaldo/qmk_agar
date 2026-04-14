@@ -76,7 +76,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [KCTL_LAYR] = LAYOUT_60_tsangan_hhkb(
         ENC_RGBPUSH, RGB_VAD,RGB_VAI,_______,_______,RGB_HUD,RGB_HUI,RGB_SAD,RGB_SAI, _______, _______, _______, DB_TOGG, _______, SECRET0,
         _______, _______, _______, _______, QK_RBT, _______, _______,  _______, _______, RGB_MOD, _______,   RGB_SPD, RGB_SPI, CSTMTOG,
-        _______, _______, _______, _______, FLASH_KB, _______, _______, _______, KC_LOCK,   _______, _______, _______, _______,
+        _______, _______, _______, AGARCOMPILE, AGARFLASH, _______, _______, _______, KC_LOCK,   _______, _______, _______, _______,
         _______, _______, _______,   EE_CLR, _______, AGARBOOT, _______, _______,  _______, RGB_RMOD, _______, _______, _______,
         _______, _______, _______, _______, _______, _______, _______
     ),
@@ -167,6 +167,16 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 agarboot_key_timer = timer_read32();
             } else if (timer_elapsed32(agarboot_key_timer) >= 500) {
                 enter_bootloader();
+            }
+            return false;
+        case AGARCOMPILE:
+            if (record->event.pressed) {
+                SEND_STRING("qmk compile -j 0 -kb ydkb/agar -km djcastaldo\n");
+            }
+            return false;
+        case AGARFLASH:
+            if (record->event.pressed) {
+                SEND_STRING("cd ~/qmk_public/agar\n./bin2uf2.sh ydkb_agar_djcastaldo.bin\n");
             }
             return false;
     }
