@@ -50,8 +50,5 @@
 enum kb_keycodes {
     KC_LPAD = SAFE_RANGE,
     KC_MCTL,
-    AGARBOOT,
-    AGARCOMPILE,
-    AGARFLASH,
     NEW_SAFE_RANGE,
 };

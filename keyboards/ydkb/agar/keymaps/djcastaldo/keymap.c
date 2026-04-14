@@ -20,7 +20,9 @@ void enter_bootloader(void);
 
 // custom keycodes
 enum custom_keycodes {
-    CUSTOM_KEYCODE = USERSPACE_END,
+    AGARBOOT = USERSPACE_END,
+    AGARCOMPILE,
+    AGARFLASH
 };
 
 // clang-format off
