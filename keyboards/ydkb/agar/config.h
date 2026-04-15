@@ -50,9 +50,9 @@
 // ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
 #    define DEBOUNCE_TYPE none
 #    define DEBOUNCE 0
-#    define DOUBLE_CLICK_FIX_DELAY 10
-#    define DEBOUNCE_DN 5
-#    define DEBOUNCE_UP 5
+#    define DOUBLE_CLICK_FIX_DELAY 8
+#    define DEBOUNCE_DN 4
+#    define DEBOUNCE_UP 4
 /* rgb settings */
 #    define RGB_DI_PIN B15
 #    define RGBLIGHT_DEFAULT_MODE RGBLIGHT_MODE_STATIC_LIGHT
