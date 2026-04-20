@@ -1,4 +1,4 @@
-name: QMK CI
+me: QMK CI
 
 on:
   push:
@@ -19,16 +19,35 @@ jobs:
           - djcastaldo
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive   # ✅ IMPORTANT
+          fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install QMK + deps
+      - name: Install QMK CLI + deps
         run: |
           python -m pip install --upgrade pip
           pip install qmk appdirs milc hjson
+
+      - name: Install QMK build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gcc-arm-none-eabi \
+            binutils-arm-none-eabi \
+            libnewlib-arm-none-eabi \
+            dfu-util \
+            build-essential
+
+      - name: Ensure submodules are up to date
+        run: |
+          make git-submodule
 
       - name: Compile firmware
         run: |
