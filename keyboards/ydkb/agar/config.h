@@ -77,8 +77,7 @@
 #    define TAPPING_TERM_PER_KEY
 
 /* enable caps word when both shift keys are tapped */
-// don't do this for Agar... instead a specific detection is added to userspace
-//#    define BOTH_SHIFTS_TURNS_ON_CAPS_WORD
+#    define BOTH_SHIFTS_TURNS_ON_CAPS_WORD
 
 /* do not allow dynamic macros to nest (can cause infinite loop) */
 #    define DYNAMIC_MACRO_NO_NESTING
