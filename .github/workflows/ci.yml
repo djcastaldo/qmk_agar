@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install QMK
+      - name: Install QMK CLI
         run: |
           python -m pip install --upgrade pip
           pip install qmk
@@ -37,6 +37,10 @@ jobs:
       - name: Set up QMK environment
         run: |
           qmk setup -y
+
+      - name: Install QMK Python dependencies
+        run: |
+          python -m pip install -r ~/qmk_firmware/requirements.txt
 
       - name: Compile firmware
         run: |
