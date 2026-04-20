@@ -1,4 +1,4 @@
-me: QMK CI
+name: QMK CI
 
 on:
   push:
