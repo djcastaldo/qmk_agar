@@ -94,11 +94,6 @@ bool        should_process_keypress(void) {
 uint8_t matrix_scan(void) {
     matrix_scan_quantum();
 
-    // 1ms Throttle - Essential for STM32 speed
-    static uint16_t last_scan = 0;
-    if (timer_elapsed(last_scan) < 1) return 1;
-    last_scan = timer_read();
-
     select_key(0);
     uint8_t matrix_keys_idle = 0;
 
@@ -179,7 +174,7 @@ static void select_key(uint8_t mode) {
         wait_us(2);
         CLOCK_PULSE();
     }
-    wait_us(10); // Settling time before reading pin
+    //wait_us(10); // Settling time before reading pin
     get_key_ready();
 }
 
