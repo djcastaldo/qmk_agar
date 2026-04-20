@@ -19,28 +19,16 @@ jobs:
           - djcastaldo
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install QMK CLI
+      - name: Install QMK + deps
         run: |
           python -m pip install --upgrade pip
-          pip install qmk
-
-      - name: Set up QMK environment
-        run: |
-          qmk setup -y
-
-      - name: Install QMK Python dependencies
-        run: |
-          python -m pip install -r ~/qmk_firmware/requirements.txt
+          pip install qmk appdirs milc hjson
 
       - name: Compile firmware
         run: |
