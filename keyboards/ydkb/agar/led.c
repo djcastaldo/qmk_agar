@@ -25,7 +25,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "quantum.h"
 #include "timer.h"
 #include "wait.h"
-#include "process_record_userspace.h"
 
 #ifndef LOGIC_INDICATOR_NUM
 #define LOGIC_INDICATOR_NUM PHY_INDICATOR_NUM
@@ -38,6 +37,9 @@ LED_TYPE rgbled[PHY_INDICATOR_NUM + RGBLED_NUM];
 
 __attribute__((weak)) bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     return true;
+}
+__attribute__((weak)) void rgb_extra_process(LED_TYPE *rgbled) {
+    // default no-op
 }
 
 void rgblight_call_driver(LED_TYPE *start_led, uint8_t num_leds) {

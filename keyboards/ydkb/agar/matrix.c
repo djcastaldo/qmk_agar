@@ -41,15 +41,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 extern debug_config_t debug_config;
 
 static matrix_row_t matrix[MATRIX_ROWS]                               = {0};
-static uint16_t     matrix_scan_timestamp                             = 0;
 static uint8_t      matrix_debouncing[MATRIX_ROWS][MATRIX_COLS]       = {0};
 static uint8_t      matrix_double_click_fix[MATRIX_ROWS][MATRIX_COLS] = {0};
 static uint8_t      now_debounce_dn_mask                              = DEBOUNCE_NK_MASK;
-static bool         matrix_idle                                       = false;
-static bool         first_key_scan                                    = false;
 
 static void                select_key(uint8_t mode);
-static void                select_all_keys(void);
 static uint8_t             get_key(void);
 static void                init_cols(void);
 __attribute__((weak)) void matrix_scan_user(void) {}
@@ -162,17 +158,6 @@ static void init_cols(void) {
 static uint8_t get_key(void) {
     // B13(595) and B14(5020)
     return palReadPad(GPIOB, 13) ? 0 : 0x80;
-}
-
-void select_all_keys(void) {
-    select_key_ready();
-
-    KEY_SDI_ON();
-    for (uint8_t i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
-        CLOCK_PULSE();
-    }
-    // KEYS_LATCH();
-    get_key_ready();
 }
 
 static void select_key(uint8_t mode) {
