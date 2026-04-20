@@ -15,7 +15,6 @@ jobs:
         keyboard:
           - ydkb/agar
         keymap:
-          - default
           - djcastaldo
 
     steps:
