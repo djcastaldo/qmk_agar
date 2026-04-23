@@ -49,9 +49,9 @@
 // djc: defaults above.  my own stuff below
 // ~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
 #    define DEBOUNCE_TYPE none
-#    define DEBOUNCE 0
-#    define DOUBLE_CLICK_FIX_DELAY 8
+#    define DOUBLE_CLICK_FIX_MS 12
 #    define DEBOUNCE_DN 4
+#    define DEBOUNCE_NK 1
 #    define DEBOUNCE_UP 4
 /* rgb settings */
 #    define RGB_DI_PIN B15

@@ -35,15 +35,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "switch_board.h"
 #include "rgblight.h"
 
-#undef DOUBLE_CLICK_FIX_DELAY
-#define DOUBLE_CLICK_FIX_DELAY 15
+#define SCAN_INTERVAL_MS 1
 
 extern debug_config_t debug_config;
 
+static uint16_t last_scan_time = 0;
+static uint16_t dc_timer[MATRIX_ROWS][MATRIX_COLS] = {0};
+
 static matrix_row_t matrix[MATRIX_ROWS]                               = {0};
 static uint8_t      matrix_debouncing[MATRIX_ROWS][MATRIX_COLS]       = {0};
-static uint8_t      matrix_double_click_fix[MATRIX_ROWS][MATRIX_COLS] = {0};
-static uint8_t      now_debounce_dn_mask                              = DEBOUNCE_NK_MASK;
+static uint8_t now_debounce_dn_mask = DEBOUNCE_NK_MASK;
 
 static void                select_key(uint8_t mode);
 static uint8_t             get_key(void);
@@ -94,40 +95,66 @@ bool        should_process_keypress(void) {
 uint8_t matrix_scan(void) {
     matrix_scan_quantum();
 
+    // --- 1. Enforce consistent scan timing ---
+    if (timer_elapsed(last_scan_time) < SCAN_INTERVAL_MS) {
+        return 1;
+    }
+    last_scan_time = timer_read();
+
     select_key(0);
-    uint8_t matrix_keys_idle = 0;
+
+    bool any_change = false;
 
     for (uint8_t row = 0; row < MATRIX_ROWS; row++) {
         for (uint8_t col = 0; col < MATRIX_COLS; col++) {
+
             uint8_t *debounce = &matrix_debouncing[row][col];
-            uint8_t *double_click_fix = &matrix_double_click_fix[row][col];
-
-            // Use the original bit-shifting direction
-            uint8_t key_state = get_key();
-            *debounce = (*debounce >> 1) | key_state;
-
             matrix_row_t col_mask = ((matrix_row_t)1 << col);
 
-            if (*double_click_fix > 0 && (matrix[row] & col_mask) == 0) {
-                (*double_click_fix)--;
-            } else {
-                // Use the masks from debounce_pk.h
-                if (*debounce > now_debounce_dn_mask) {
+            // --- 2. Read + stabilize signal ---
+            uint8_t read1 = get_key();
+            __NOP();
+            __NOP();
+            uint8_t read2 = get_key();
+
+            uint8_t key_state = (read1 & read2) ? 0x80 : 0;
+
+            // --- 3. Update debounce history (8-sample shift register) ---
+            *debounce = (*debounce >> 1) | key_state;
+
+            bool currently_pressed = (matrix[row] & col_mask);
+
+            // --- 4. Determine debounced transitions ---
+            bool debounced_press   = (*debounce > now_debounce_dn_mask);
+            bool debounced_release = (*debounce < DEBOUNCE_UP_MASK);
+
+            if (debounced_press) {
+                dprintf("ROW:%d COL:%d\n", row, col);
+            }
+            // --- 5. Apply time-based double-click suppression ---
+            if (debounced_press && !currently_pressed) {
+
+                if (timer_elapsed(dc_timer[row][col]) >= DOUBLE_CLICK_FIX_MS) {
                     matrix[row] |= col_mask;
-                    *double_click_fix = DOUBLE_CLICK_FIX_DELAY;
-                } else if (*debounce < DEBOUNCE_UP_MASK) {
-                    matrix[row] &= ~col_mask;
+                    dc_timer[row][col] = timer_read();
+                    any_change = true;
                 }
+
+            } else if (debounced_release && currently_pressed) {
+
+                matrix[row] &= ~col_mask;
+                dc_timer[row][col] = timer_read();
+                any_change = true;
             }
 
-            if (!(matrix[row] & col_mask)) matrix_keys_idle++;
-
+            // --- 6. Advance to next key ---
             select_key(1);
         }
     }
 
-    // A simpler failsafe: only process if we don't have a total matrix flood
-    process_key_press = (matrix_keys_idle > 0);
+    // --- 7. Only process if something actually changed ---
+    process_key_press = any_change;
+
     return 1;
 }
 
@@ -162,19 +189,15 @@ static void select_key(uint8_t mode) {
         KEY_SDI_OFF();
         for (uint8_t i = 0; i < MATRIX_ROWS * MATRIX_COLS; i++) {
             CLOCK_PULSE();
-            wait_us(2);
         }
         KEY_SDI_ON();
-        wait_us(2);
         CLOCK_PULSE();
         // Leave it ready for the first get_key()
     } else {
         // Shift to next key
         KEY_SDI_OFF();
-        wait_us(2);
         CLOCK_PULSE();
     }
-    //wait_us(10); // Settling time before reading pin
     get_key_ready();
 }
 
