@@ -63,8 +63,8 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [SFT_LAYR] = LAYOUT_60_tsangan_hhkb(
         WM_QUIT, WM_SOC1, WM_SOC2, WM_SOC3, WM_SOC4, WM_SOC5, WM_SOC6, WM_SOC7, WM_SOC8, WM_SOC9, WM_SOC0,KC_VOLD,KC_VOLU,KC_NUM, WM_OVIEW,
         KC_APP, WM_QLOOK, WM_INSPECT, WM_VHIDDEN, _______,  WM_TIME, _______, _______, KC_P7, KC_P8, KC_P9, DUAL_PLUSMIN, CURSORR, _______,
-        MO(FKEY_LAYR), WM_APPS, WM_SIRCAT, WM_DOCS, WM_MYCM, KC_MYCM, _______,    _______, KC_P4, KC_P5, KC_P6, DUAL_MULTDIV, _______,
-        _______, _______, _______, KC_MPRV, KC_MPLY, KC_MNXT, _______,  WM_STATB, KC_P1, KC_P2, KC_P3, _______, MO(FKEY_LAYR),
+        _______, WM_APPS, WM_SIRCAT, WM_DOCS, WM_MYCM, KC_MYCM, _______,    _______, KC_P4, KC_P5, KC_P6, DUAL_MULTDIV, _______,
+        _______, _______, _______, KC_MPRV, KC_MPLY, KC_MNXT, _______,  WM_STATB, KC_P1, KC_P2, KC_P3, _______, _______,
         _______, _______, _______, KC_P0,  KC_PDOT, _______, _______
     ),
     [SFT_LAYR_NAV] = LAYOUT_60_tsangan_hhkb(
@@ -86,8 +86,8 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [TMUX_LAYR] = LAYOUT_60_tsangan_hhkb(
         TMUXLKEY, LTRANS, LTRANS, LTRANS, LTRANS, LTRANS, LTRANS, LTRANS, LTRANS, LTRANS, LTRANS, LTRANS, LTRANS, TWINLFT, TWINRGT,
         _______, LTRANS, LTRANS, _______, _______, LTRANS, _______, _______, _______, LTRANS, LTRANS, LTRANS, LTRANS, TMUXLCMD,
-        MO(FKEY_LAYR), _______, LTRANS, LTRANS, _______, _______, _______, TJPANE, _______, LTRANS, LTRANS, LTRANS, _______,
-        _______, LTRANS, LTRANS, LTRANS, _______, _______, LTRANS, ENC_TMON, LTRANS, LTRANS, LTRANS, _______, MO(FKEY_LAYR),
+        _______, _______, LTRANS, LTRANS, _______, _______, _______, TJPANE, _______, LTRANS, LTRANS, LTRANS, _______,
+        _______, LTRANS, LTRANS, LTRANS, _______, _______, LTRANS, ENC_TMON, LTRANS, LTRANS, LTRANS, _______, _______,
         _______, KC_LALT, KC_LALT, LTRANS, KC_LALT, _______, _______
     ),
     [TMUX_LAYR_NAV] = LAYOUT_60_tsangan_hhkb(
